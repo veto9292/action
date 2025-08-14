@@ -1,0 +1,51 @@
+# نام Workflow شما
+name: Combine Config Files
+
+# این بخش مشخص می‌کند که Action چه زمانی اجرا شود
+on:
+  # اجرای خودکار بر اساس زمان‌بندی (این مثال هر 6 ساعت یک‌بار اجرا می‌شود)
+  # برای تغییر زمان‌بندی، از سایت crontab.guru کمک بگیرید
+  schedule:
+    - cron: '0 */6 * * *'
+  
+  # این خط به شما اجازه می‌دهد تا Action را به صورت دستی هم از تب Actions اجرا کنید
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. ابتدا کد ریپازیتوری خودتان را دریافت می‌کند (برای دسترسی به فایل header.txt)
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      # 2. محتوای فایل اصلی را دانلود کرده و با فایل هدر ترکیب می‌کند
+      - name: Fetch and Combine
+        run: |
+          # URL فایل اصلی که می‌خواهید محتوایش را بگیرید
+          ORIGINAL_URL="https://raw.githubusercontent.com/hiddify/hiddify-app/refs/heads/main/test.configs/fragment"
+          
+          # نام فایل هدر شما
+          HEADER_FILE="header.txt"
+          
+          # نام فایل خروجی نهایی
+          OUTPUT_FILE="combined_config.txt"
+          
+          # دانلود محتوای اصلی و ذخیره در یک فایل موقت
+          curl -sL "$ORIGINAL_URL" -o original_content.tmp
+          
+          # ترکیب فایل هدر و فایل دانلود شده در فایل خروجی
+          cat "$HEADER_FILE" original_content.tmp > "$OUTPUT_FILE"
+          
+          echo "Files combined successfully into $OUTPUT_FILE"
+
+      # 3. تغییرات را در ریپازیتوری شما کامیت و پوش می‌کند
+      - name: Commit and Push if content changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "CI: Auto-update combined config file"
+          file_pattern: combined_config.txt # فقط در صورت تغییر این فایل، کامیت انجام می‌شود
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "actions@github.com"
+          commit_author: "GitHub Actions Bot <actions@github.com>"
