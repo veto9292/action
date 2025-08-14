@@ -1,9 +1,8 @@
 name: Mirror and prepend fragment
 
 on:
-  # هر 3 ساعت یکبار (UTC)
   schedule:
-    - cron: "0 */3 * * *"
+    - cron: "0 */3 * * *"   # هر 3 ساعت یک‌بار (UTC)
   workflow_dispatch: {}
   push:
     paths:
@@ -13,40 +12,50 @@ on:
 permissions:
   contents: write
 
+env:
+  SOURCE_URL: https://raw.githubusercontent.com/hiddify/hiddify-app/main/test.configs/fragment
+  OUT_PATH: output/fragment
+  BRANCH: main
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Fetch source
-        env:
-          SOURCE_URL: https://raw.githubusercontent.com/hiddify/hiddify-app/refs/heads/main/test.configs/fragment
         run: |
           set -euo pipefail
           curl -fsSL "$SOURCE_URL" -o source.txt
 
-      # یکی از دو بخش زیر را انتخاب کنید:
-
-      # گزینه A) استفاده از prefix.txt ثابت
       - name: Build combined file (with prefix.txt)
         run: |
-          mkdir -p output
-          cat prefix.txt source.txt > output/fragment
-            - name: Commit and push if changed
-        env:
-          BRANCH: main   # اگر شاخه‌ی پیش‌فرض شما چیز دیگری است، همین را عوض کنید
+          set -e
+          mkdir -p "$(dirname "$OUT_PATH")"
+          cat prefix.txt source.txt > "$OUT_PATH"
+
+      - name: Show status (debug)
+        run: |
+          ls -la
+          ls -la output || true
+          git status -s || true
+
+      - name: Commit and push if changed
         run: |
           set -e
-          if ! git diff --quiet -- output/fragment; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add output/fragment
-            git commit -m "Update fragment from upstream [skip ci]"
-            # در حالت detached HEAD مستقیماً به شاخه‌ی مقصد push می‌کنیم
-            git push origin HEAD:$BRANCH
-          else
+          # مرحله‌ی مطمئن: اول stage، بعد بررسی diff استیج‌شده
+          git add -A
+          if git diff --staged --quiet; then
             echo "No changes to commit."
+          else
+            git config user.name "${GITHUB_ACTOR}"
+            git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+            # برای جلوگیری از خطای non-fast-forward:
+            git pull --rebase origin "$BRANCH" || true
+            git commit -m "Update fragment from upstream [skip ci]"
+            git push origin HEAD:"$BRANCH"
           fi
-
