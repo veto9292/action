@@ -34,4 +34,19 @@ jobs:
         run: |
           mkdir -p output
           cat prefix.txt source.txt > output/fragment
+            - name: Commit and push if changed
+        env:
+          BRANCH: main   # اگر شاخه‌ی پیش‌فرض شما چیز دیگری است، همین را عوض کنید
+        run: |
+          set -e
+          if ! git diff --quiet -- output/fragment; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add output/fragment
+            git commit -m "Update fragment from upstream [skip ci]"
+            # در حالت detached HEAD مستقیماً به شاخه‌ی مقصد push می‌کنیم
+            git push origin HEAD:$BRANCH
+          else
+            echo "No changes to commit."
+          fi
 
