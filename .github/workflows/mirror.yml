@@ -1,0 +1,37 @@
+name: Mirror and prepend fragment
+
+on:
+  # هر 3 ساعت یکبار (UTC)
+  schedule:
+    - cron: "0 */3 * * *"
+  workflow_dispatch: {}
+  push:
+    paths:
+      - ".github/workflows/mirror.yml"
+      - "prefix.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch source
+        env:
+          SOURCE_URL: https://raw.githubusercontent.com/hiddify/hiddify-app/refs/heads/main/test.configs/fragment
+        run: |
+          set -euo pipefail
+          curl -fsSL "$SOURCE_URL" -o source.txt
+
+      # یکی از دو بخش زیر را انتخاب کنید:
+
+      # گزینه A) استفاده از prefix.txt ثابت
+      - name: Build combined file (with prefix.txt)
+        run: |
+          mkdir -p output
+          cat prefix.txt source.txt > output/fragment
+
